@@ -1,4 +1,5 @@
 <?php
+
 App::uses('PagSeguro', 'PagSeguro.Lib');
 App::uses('PagSeguroException', 'PagSeguro.Lib');
 
@@ -16,180 +17,225 @@ App::uses('PagSeguroException', 'PagSeguro.Lib');
  * @link         https://github.com/radig/pagseguro/
  * @license      MIT License (http://www.opensource.org/licenses/mit-license.php)
  */
-class PagSeguroConsult extends PagSeguro {
+class PagSeguroConsult extends PagSeguro
+{
+    const TRANSACTION = "transaction";
+    const AUTH = "authorization";
+    
+    const TRANSACTION_PATH = "/v2/transactions/";
+    const AUTH_PATH = "/v2/transactions/";
 
-	static public $TYPE_READ = 'read';
-	static public $TYPE_SEARCH = 'search';
-	static public $TYPE_ABANDONED = 'abandoned';
+    static public $TYPE_READ = 'read';
+    static public $TYPE_SEARCH = 'search';
+    static public $TYPE_ABANDONED = 'abandoned';
+    protected $others = array();
 
-	protected $others = array();
+    /**
+     * Construtor padrão
+     *
+     * @param array $settings
+     */
+    public function __construct($settings = array())
+    {
+        $this->settings['type'] = self::$TYPE_READ;
+        $this->settings['onlyBasic'] = false;
 
-	/**
-	 * Construtor padrão
-	 *
-	 * @param array $settings
-	 */
-	public function __construct($settings = array()) {
-		$this->settings['type'] = self::$TYPE_READ;
-		$this->settings['onlyBasic'] = false;
+        parent::__construct($settings);
 
-		parent::__construct($settings);
+        $this->URI['path'] = PagSeguroConsult::TRANSACTION_PATH;
+    }
 
-		$this->URI['path'] = '/v2/transactions/';
-	}
+    /**
+     * Requisita da API do PagSeguro os dados de uma transação (ou autorização),
+     * converte a resposta de XML para Array e então o retorna.
+     *
+     * @param string $code Código da notificação
+     * @param string $type o tipo de consulta [PagSeguroConsult::TRANSACTION | PagSeguroConsult::AUTH]
+     * @return mixed array com dos dados da transação em caso de sucesso,
+     * false em caso de falha
+     */
+    public function read($code, $type = PagSeguroConsult::TRANSACTION)
+    {
+        
 
-	/**
-	 * Requisita da API do PagSeguro os dados de uma transação,
-	 * converte o retorno de XML para Array e então o retorna.
-	 *
-	 * @param string $code Código da transação
-	 * @return mixed array com dos dados da transação em caso de sucesso,
-	 * false em caso de falha
-	 */
-	public function read($code) {
-		$this->URI['path'] .= $code;
+        try
+        {
+            if ($type == PagSeguroConsult::AUTH)
+            {
+                
+            }
+            
+            $keep = $this->URI['path'];
+            $this->URI['path'] .= $code;
+            $retorno =  $this->_sendData($this->_prepareData(), 'GET');
+            $this->URI['path'] = $keep;
+            return $retorno;
+        } catch (PagSeguroException $e)
+        {
+            $this->lastError = $e->getMessage();
+            return false;
+        }
+    }
 
-		try {
-			return $this->_sendData($this->_prepareData(), 'GET');
-		}
-		catch (PagSeguroException $e) {
-			$this->lastError = $e->getMessage();
-			return false;
-		}
-	}
+    /**
+     * Faz uma consulta especificando uma data de início, fim,
+     * um limite de registros por página e a página requisitada.
+     *
+     * @param string $begin data válida
+     * @param string $end data válida
+     * @param int $limit Número de registros por página
+     * @param int $page Número da página requisitada
+     * @return mixed array com dos dados da notificação em caso de sucesso,
+     * false em caso de falha
+     */
+    public function find($begin, $end, $limit = 50, $page = 1)
+    {
+        if ($this->settings['type'] === self::$TYPE_ABANDONED)
+        {
+            $this->URI['path'] .= 'abandoned/';
+        }
 
-	/**
-	 * Faz uma consulta especificando uma data de início, fim,
-	 * um limite de registros por página e a página requisitada.
-	 *
-	 * @param string $begin data válida
-	 * @param string $end data válida
-	 * @param int $limit Número de registros por página
-	 * @param int $page Número da página requisitada
-	 * @return mixed array com dos dados da notificação em caso de sucesso,
-	 * false em caso de falha
-	 */
-	public function find($begin, $end, $limit = 50, $page = 1) {
-		if ($this->settings['type'] === self::$TYPE_ABANDONED) {
-			$this->URI['path'] .= 'abandoned/';
-		}
+        try
+        {
+            $bg = new DateTime($begin);
+            $ed = new DateTime($end);
+        } catch (Exception $e)
+        {
+            $this->lastError = __('Data de início ou término para a consulta é inválida.');
+            return false;
+        }
 
-		try {
-			$bg = new DateTime($begin);
-			$ed = new DateTime($end);
-		}
-		catch (Exception $e) {
-			$this->lastError = __('Data de início ou término para a consulta é inválida.');
-			return false;
-		}
+        $this->others = array(
+            'initialDate' => $bg->format(DateTime::W3C),
+            'finalDate' => $ed->format(DateTime::W3C),
+            'page' => $page,
+            'maxPageResults' => $limit
+        );
 
-		$this->others = array(
-			'initialDate' =>  $bg->format(DateTime::W3C),
-			'finalDate' => $ed->format(DateTime::W3C),
-			'page' => $page,
-			'maxPageResults' => $limit
-		);
+        try
+        {
+            $response = $this->_sendData($this->_prepareData(), 'GET');
+            return $response;
+        } catch (PagSeguroException $e)
+        {
+            $this->lastError = $e->getMessage();
+            return false;
+        }
+    }
 
-		try {
-			$response = $this->_sendData($this->_prepareData(), 'GET');
-			return $response;
-		}
-		catch (PagSeguroException $e) {
-			$this->lastError = $e->getMessage();
-			return false;
-		}
-	}
+    /**
+     * Prepara os dados para enviar ao PagSeguro
+     *
+     * @return array
+     */
+    protected function _prepareData()
+    {
+        $config = array();
+        //Definindo as configurações de autenticação.
+        if ($this->settings['type'] == 'seller')
+        {
+            $email = $this->settings['email'];
+            $token = $this->settings['token'];
+            $config = compact("email", "token");
+        } else
+        if ($this->settings['type'] == 'application')
+        {
+            $appId = $this->settings['appId'];
+            $appKey = $this->settings['appKey'];
+            $config = compact("appId", "appKey");
+        }
+        return array_merge($config,$this->others);
+    }
 
-	/**
-	 * Prepara os dados para enviar ao PagSeguro
-	 *
-	 * @return array
-	 */
-	protected function _prepareData() {
-		return array('email' => $this->settings['email'], 'token' => $this->settings['token']) + $this->others;
-	}
+    /**
+     * Recebe o Xml convertido para Array com os dados da Consulta
+     * retornado pelo PagSeguro.
+     *
+     * Caso o segundo parâmetro seja false, retorna o Array original
+     * sem o índice 'transactionSearchResult'.
+     *
+     * Caso contrário devolve um Array formatado com o resultado, tendo a estrutura:
+     * Array(
+     *  'pages' => 000,
+     *  'current' => 000,
+     *  'items' => Array(
+     *    Array(
+     *     'date' => date('Y-m-d'),
+     *     'code' => 'xxxxxxxxx',
+     *     'value' => 'xxxx',
+     *     'status' => 0,
+     *     'reference' => 'xxxxxxxx'
+     *    )
+     * 	)
+     * )
+     *
+     * um Array reduzido com as informações essenciais caso o segundo
+     * parâmetro seja true
+     *
+     * @param String $data
+     * @return array
+     */
+    protected function _parseResponse($data)
+    {
+        if (!isset($data['transactionSearchResult']) && !isset($data['transaction']) && !isset($data['authorization']))
+        {
+            throw new PagSeguroException("Resposta inválida do PagSeguro para uma Consulta.");
+        }
 
-	/**
-	 * Recebe o Xml convertido para Array com os dados da Consulta
-	 * retornado pelo PagSeguro.
-	 *
-	 * Caso o segundo parâmetro seja false, retorna o Array original
-	 * sem o índice 'transactionSearchResult'.
-	 *
-	 * Caso contrário devolve um Array formatado com o resultado, tendo a estrutura:
-	 * Array(
-	 *  'pages' => 000,
-	 *  'current' => 000,
-	 *  'items' => Array(
-	 *    Array(
-	 *     'date' => date('Y-m-d'),
-	 *     'code' => 'xxxxxxxxx',
-	 *     'value' => 'xxxx',
-	 *     'status' => 0,
-	 *     'reference' => 'xxxxxxxx'
-	 *    )
-	 * 	)
-	 * )
-	 *
-	 * um Array reduzido com as informações essenciais caso o segundo
-	 * parâmetro seja true
-	 *
-	 * @param String $data
-	 * @return array
-	 */
-	protected function _parseResponse($data) {
-		if (!isset($data['transactionSearchResult']) && !isset($data['transaction'])) {
-			throw new PagSeguroException("Resposta inválida do PagSeguro para uma Consulta.");
-		}
+        if (isset($data['transaction']))
+        {
+            if (!$this->settings['onlyBasic'])
+            {
+                return $data['transaction'];
+            }
 
-		if (isset($data['transaction'])) {
-			if (!$this->settings['onlyBasic']) {
-				return $data['transaction'];
-			}
+            return $this->_parseOneResponseEntry($data['transaction']);
+        }
 
-			return $this->_parseOneResponseEntry($data['transaction']);
-		}
+        $decoded = array(
+            'pages' => $data['transactionSearchResult']['totalPages'],
+            'pageSize', $data['transactionSearchResult']['resultsInThisPage'],
+            'current' => $data['transactionSearchResult']['currentPage'],
+        );
 
-		$decoded = array(
-			'pages' => $data['transactionSearchResult']['totalPages'],
-			'pageSize', $data['transactionSearchResult']['resultsInThisPage'],
-			'current' => $data['transactionSearchResult']['currentPage'],
-		);
+        $decoded['items'] = array();
 
-		$decoded['items'] = array();
+        foreach ($data['transactionSearchResult']['transactions'] as $transaction)
+        {
+            $decoded['items'][] = $this->_parseOneResponseEntry($transaction);
+        }
 
-		foreach ($data['transactionSearchResult']['transactions'] as $transaction) {
-			$decoded['items'][] = $this->_parseOneResponseEntry($transaction);
-		}
+        return $decoded;
+    }
 
-		return $decoded;
-	}
+    /**
+     * Converte uma única transação em um array com
+     * apenas os dados essenciais.
+     *
+     * @param array $entry Uma transação
+     * @return array $decoded Resumo da transação
+     */
+    private function _parseOneResponseEntry($entry)
+    {
+        $date = substr($entry['date'], 0, 19);
+        $date = str_replace('T', ' ', $date);
 
-	/**
-	 * Converte uma única transação em um array com
-	 * apenas os dados essenciais.
-	 *
-	 * @param array $entry Uma transação
-	 * @return array $decoded Resumo da transação
-	 */
-	private function _parseOneResponseEntry($entry) {
-		$date = substr($entry['date'], 0, 19);
-		$date = str_replace('T', ' ', $date);
+        $decoded = array(
+            'date' => $date,
+            'code' => $entry['code'],
+            'value' => $entry['grossAmount'],
+            'status' => $entry['status'],
+            'reference' => $entry['reference'],
+            'modified' => $entry['lastEventDate'],
+        );
 
-		$decoded = array(
-			'date' => $date,
-			'code' => $entry['code'],
-			'value' => $entry['grossAmount'],
-			'status' => $entry['status'],
-			'reference' => $entry['reference'],
-			'modified' => $entry['lastEventDate'],
-		);
+        if ($this->settings['type'] !== self::$TYPE_ABANDONED)
+        {
+            $decoded['paymentType'] = $entry['paymentMethod']['type'];
+            $decoded['paymentCode'] = $entry['paymentMethod']['code'];
+        }
 
-		if ($this->settings['type'] !== self::$TYPE_ABANDONED) {
-			$decoded['paymentType'] = $entry['paymentMethod']['type'];
-			$decoded['paymentCode'] = $entry['paymentMethod']['code'];
-		}
+        return $decoded;
+    }
 
-		return $decoded;
-	}
 }

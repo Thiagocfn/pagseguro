@@ -108,7 +108,7 @@ class CheckoutComponent extends Component {
 	 * @return void
 	 */
 	public function addItem($id, $name, $amount, $quantity = 1, $weight = 0, $shippingCost = null) {
-		$this->_PagSeguroCheckout->addItem($id, $name, $amount, $weight, $quantity);
+		$this->_PagSeguroCheckout->addItem($id, $name, $amount, $quantity, $weight);
 
 		return $this;
 	}

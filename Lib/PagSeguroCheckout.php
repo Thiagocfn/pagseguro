@@ -1,4 +1,5 @@
 <?php
+
 App::uses('PagSeguro', 'PagSeguro.Lib');
 App::uses('PagSeguroException', 'PagSeguro.Lib');
 
@@ -18,310 +19,351 @@ App::uses('PagSeguroException', 'PagSeguro.Lib');
  * @license     MIT License (http://www.opensource.org/licenses/mit-license.php)
  * @version     2.2
  */
-class PagSeguroCheckout extends PagSeguro {
+class PagSeguroCheckout extends PagSeguro
+{
 
-	/**
-	 * Endereço para redirecionamento para o checkout do PagSeguro
-	 * @var String
-	 */
-	private $redirectTo = 'https://pagseguro.uol.com.br/v2/checkout/payment.html?code=%s';
+    /**
+     * Endereço para redirecionamento para o checkout do PagSeguro
+     * @var String
+     */
+    private $redirectTo = 'https://pagseguro.uol.com.br/v2/checkout/payment.html?code=%s';
 
-	/**
-	 * Referência da transação
-	 *
-	 * Essa referência pode ser usada para associar a transação
-	 * do PagSeguro com um registro em seu sistema.
-	 *
-	 * @var array
-	 */
-	private $reference = array();
+    /**
+     * Referência da transação
+     *
+     * Essa referência pode ser usada para associar a transação
+     * do PagSeguro com um registro em seu sistema.
+     *
+     * @var array
+     */
+    private $reference = array();
 
-	/**
-	 * Dados do endereço
-	 *
-	 * @var array
-	 */
-	private $shippingAddress = array();
+    /**
+     * Dados do endereço
+     *
+     * @var array
+     */
+    private $shippingAddress = array();
 
-	/**
-	 * Dados do cliente
-	 *
-	 * @var array
-	 */
-	private $shippingCustomer = array();
+    /**
+     * Dados do cliente
+     *
+     * @var array
+     */
+    private $shippingCustomer = array();
 
-	/**
-	 * Dados dos itens da compra
-	 *
-	 * @var array
-	 */
-	private $cart = array();
+    /**
+     * Dados dos itens da compra
+     *
+     * @var array
+     */
+    private $cart = array();
 
-	/**
-	 * Quantidade de items no carrinho de
-	 * compra.
-	 *
-	 * @var integer
-	 */
-	private $cartCount = 1;
+    /**
+     * Quantidade de items no carrinho de
+     * compra.
+     *
+     * @var integer
+     */
+    private $cartCount = 1;
 
-	/**
-	 * Tipos de frete suportados
-	 *
-	 * @var array
-	 */
-	private $typeFreight = array(
-		null => 3,
-		'PAC' => 1,
-		'SEDEX' => 2,
-	);
+    /**
+     * Tipos de frete suportados
+     *
+     * @var array
+     */
+    private $typeFreight = array(
+        null => 3,
+        'PAC' => 1,
+        'SEDEX' => 2,
+    );
 
-	/**
-	 * Tipo de frete em uso
-	 *
-	 * @var array
-	 */
-	private $type = array(
-		'shippingType' => 3
-	);
+    /**
+     * Tipo de frete em uso
+     *
+     * @var array
+     */
+    private $type = array(
+        'shippingType' => 3
+    );
 
-	/**
-	 * Construtor padrão
-	 *
-	 * @param array $settings
-	 */
-	public function __construct($settings = array()) {
-		$this->settings['currency'] = 'BRL';
+    /**
+     * Construtor padrão
+     *
+     * @param array $settings
+     */
+    public function __construct($settings = array())
+    {
+        $this->settings['currency'] = 'BRL';
 
-		parent::__construct($settings);
+        parent::__construct($settings);
 
-		$this->URI['path'] = '/v2/checkout/';
-	}
+        $this->URI['path'] = '/v2/checkout/';
+    }
 
-	/**
-	 * Define uma referência para a transação com alguma
-	 * identificação interna da aplicação.
-	 *
-	 * @param string $id
-	 */
-	public function setReference($id) {
-		$this->reference = array('reference' => $id);
-	}
+    /**
+     * Define uma referência para a transação com alguma
+     * identificação interna da aplicação.
+     *
+     * @param string $id
+     */
+    public function setReference($id)
+    {
+        $this->reference = array('reference' => $id);
+    }
 
-	/**
-	 * Incluí item no carrinho de compras
-	 *
-	 * @param string $id			Identificação do produto no seu sistema
-	 * @param string $description	Nome do produto
-	 * @param string $amount		Valor do item
-	 * @param string $weight		Peso do item
-	 * @param integer $quantity		Quantidade
-	 * @param string $shippingCost	Custo da entrega
-	 *
-	 * @return PagSeguroCheckout
-	 */
-	public function addItem($id, $description, $amount, $quantity = 1, $weight = 0, $shippingCost = null) {
+    /**
+     * Incluí item no carrinho de compras
+     *
+     * @param string $id			Identificação do produto no seu sistema
+     * @param string $description	Nome do produto
+     * @param string $amount		Valor do item
+     * @param string $weight		Peso do item
+     * @param integer $quantity		Quantidade
+     * @param string $shippingCost	Custo da entrega
+     *
+     * @return PagSeguroCheckout
+     */
+    public function addItem($id, $description, $amount, $quantity = 1, $weight = 0, $shippingCost = null)
+    {
+        
+        $item = compact("id", "description", "amount", "quantity");
+        if (!empty($weight))
+        { 
+            $item['weight'] = $weight;
+        }
 
-		$item = compact($id, $description, $amount, $quantity);
+        if (!empty($shippingCost))
+        {
+            $item['shippingCost'] = $shippingCost;
+        }
+        //print_r($item);
+        $this->setItem($item);
 
-		if (!empty($weight)) {
-			$item['weight'] = $weight;
-		}
+        return $this;
+    }
 
-		if (!empty($shippingCost)) {
-			$item['shippingCost'] = $shippingCost;
-		}
+    /**
+     * Incluí um item passado como um array
+     *
+     * @param array $item um array contendo os seguintes indices:
+     *  - string id OBRIGATÓRIO
+     *  - string description OBRIGATÓRIO
+     *  - string amount OBRIGATÓRIO
+     *  - integer quantity OBRIGATÓRIO
+     *  - string weight OPCIONAL
+     *  - string shippingCost OPCIONAL
+     *
+     * @throws PagSeguroException
+     *
+     * @return PagSeguroCheckout
+     */
+    public function setItem($item)
+    {
+        if (!is_array($item))
+        {
+            throw new PagSeguroException("Este método recebe um array como parâmetro.");
+        }
 
-		$this->setItem($item);
+        $requireds = array('id', 'description', 'amount', 'quantity');
 
-		return $this;
-	}
+        foreach ($requireds as $field)
+        {
+            if (!isset($item[$field]) || empty($item[$field]))
+                throw new PagSeguroException("O campo {$field} é obrigatório para inclusão de itens.");
+        }
 
-	/**
-	 * Incluí um item passado como um array
-	 *
-	 * @param array $item um array contendo os seguintes indices:
-	 *  - string id OBRIGATÓRIO
-	 *  - string description OBRIGATÓRIO
-	 *  - string amount OBRIGATÓRIO
-	 *  - integer quantity OBRIGATÓRIO
-	 *  - string weight OPCIONAL
-	 *  - string shippingCost OPCIONAL
-	 *
-	 * @throws PagSeguroException
-	 *
-	 * @return PagSeguroCheckout
-	 */
-	public function setItem($item) {
-		if (!is_array($item)) {
-			throw new PagSeguroException("Este método recebe um array como parâmetro.");
-		}
+        extract($item);
+        $nextId = $this->cartCount;
 
-		$requireds = array('id', 'description', 'amount', 'quantity');
+        $item = array(
+            "itemId{$nextId}" => $id,
+            "itemDescription{$nextId}" => $description,
+            "itemAmount{$nextId}" => str_replace(',', '', number_format($amount, 2)),
+            "itemQuantity{$nextId}" => $quantity
+        );
 
-		foreach ($requireds as $field) {
-			if(!isset($item[$field]) || empty($item[$field]))
-				throw new PagSeguroException("O campo {$field} é obrigatório para inclusão de itens.");
-		}
+        if (isset($weight))
+        {
+            $item["itemWeight{$nextId}"] = $weight;
+        }
 
-		extract($item);
-		$nextId = $this->cartCount;
+        if (isset($shippingCost))
+        {
+            $item["itemShippingCost{$nextId}"] = $shippingCost;
+        }
 
-		$item = array(
-			"itemId{$nextId}"			=> $id,
-			"itemDescription{$nextId}"	=> $description,
-			"itemAmount{$nextId}"		=> str_replace(',', '', number_format($amount, 2)),
-			"itemQuantity{$nextId}"		=> $quantity
-		);
+        $this->cart = array_merge($this->cart, $item);
+        $this->cartCount++;
 
-		if (isset($weight)) {
-			$item["itemWeight{$nextId}"] = $weight;
-		}
+        return $this;
+    }
 
-		if (isset($shippingCost)) {
-			$item["itemShippingCost{$nextId}"] = $shippingCost;
-		}
+    /**
+     * Define o endereço de entrega
+     *
+     * @param string $zip			CEP
+     * @param string $address		Endereço (Rua, por exemplo)
+     * @param string $number		Número
+     * @param string $completion	Complemento
+     * @param string $neighborhood	Bairro
+     * @param string $city			Cidade
+     * @param string $state			Estado
+     * @param string $country		País
+     *
+     * @return PagSeguroCheckout
+     */
+    public function setShippingAddress($zip, $address, $number, $completion, $neighborhood, $city, $state, $country)
+    {
+        $this->shippingAddress = array(
+            'shippingAddressStreet' => $address,
+            'shippingAddressNumber' => $number,
+            'shippingAddressDistrict' => $neighborhood,
+            'shippingAddressPostalCode' => $zip,
+            'shippingAddressCity' => $city,
+            'shippingAddressState' => $state,
+            'shippingAddressCountry' => $country
+        );
 
-		$this->cart = array_merge($this->cart, $item);
-		$this->cartCount++;
+        return $this;
+    }
 
-		return $this;
-	}
+    /**
+     * Define os dados do cliente
+     *
+     * @param string $email
+     * @param string $name
+     * @param string $areaCode
+     * @param string $phoneNumber
+     *
+     * @return PagSeguroCheckout
+     */
+    public function setCustomer($email, $name, $areaCode = null, $phoneNumber = null)
+    {
+        $this->shippingCustomer = array(
+            'senderName' => $name,
+            'senderEmail' => $email
+        );
 
-	/**
-	 * Define o endereço de entrega
-	 *
-	 * @param string $zip			CEP
-	 * @param string $address		Endereço (Rua, por exemplo)
-	 * @param string $number		Número
-	 * @param string $completion	Complemento
-	 * @param string $neighborhood	Bairro
-	 * @param string $city			Cidade
-	 * @param string $state			Estado
-	 * @param string $country		País
-	 *
-	 * @return PagSeguroCheckout
-	 */
-	public function setShippingAddress($zip, $address, $number, $completion, $neighborhood, $city, $state, $country) {
-		$this->shippingAddress = array(
-			'shippingAddressStreet'		=> $address,
-			'shippingAddressNumber'		=> $number,
-			'shippingAddressDistrict'	=> $neighborhood,
-			'shippingAddressPostalCode'	=> $zip,
-			'shippingAddressCity'		=> $city,
-			'shippingAddressState'		=> $state,
-			'shippingAddressCountry'	=> $country
-		);
+        if ($areaCode && $phoneNumber)
+        {
+            $this->shippingCustomer['senderAreaCode'] = $areaCode;
+            $this->shippingCustomer['senderPhone'] = $phoneNumber;
+        }
 
-		return $this;
-	}
+        return $this;
+    }
 
-	/**
-	 * Define os dados do cliente
-	 *
-	 * @param string $email
-	 * @param string $name
-	 * @param string $areaCode
-	 * @param string $phoneNumber
-	 *
-	 * @return PagSeguroCheckout
-	 */
-	public function setCustomer($email, $name, $areaCode = null, $phoneNumber = null) {
-		$this->shippingCustomer = array(
-			'senderName'		=> $name,
-			'senderEmail'		=> $email
-		);
+    /**
+     * Define o tipo de entrega
+     *
+     * @param string $type
+     * @throws PagSeguroException
+     *
+     * @return PagSeguroCheckout
+     */
+    public function setShippingType($type)
+    {
+        if (!isset($this->typeFreight[$type]))
+        {
+            throw new PagSeguroException("Tipo de entrega '{$type}' não suportado.");
+        }
 
-		if ($areaCode && $phoneNumber) {
-			$this->shippingCustomer['senderAreaCode'] = $areaCode;
-			$this->shippingCustomer['senderPhone']    = $phoneNumber;
-		}
+        $this->type = array('shippingType' => $this->typeFreight[$type]);
 
-		return $this;
-	}
+        return $this;
+    }
 
-	/**
-	 * Define o tipo de entrega
-	 *
-	 * @param string $type
-	 * @throws PagSeguroException
-	 *
-	 * @return PagSeguroCheckout
-	 */
-	public function setShippingType($type) {
-		if (!isset($this->typeFreight[$type])) {
-			throw new PagSeguroException("Tipo de entrega '{$type}' não suportado.");
-		}
+    /**
+     * Envia dados ao PagSeguro para iniciar transação de pagamento.
+     * Caso haja falha, retorna false e guarda a mensagem de
+     * erro no atributo $lastError.
+     *
+     * @return mixed Um array com os dados da compra + endereço
+     * para redirecionar o usuário, caso haja um. False em caso
+     * de falha.
+     */
+    public function finalize()
+    {
+        try
+        {
+            $response = $this->_sendData($this->_prepareData());
+            return $response;
+        } catch (PagSeguroException $e)
+        {
+            $this->lastError = $e->getMessage();
+            return false;
+        }
+    }
 
-		$this->type = array('shippingType' => $this->typeFreight[$type]);
+    /**
+     * Valida os dados de configuração caso falhe dispara uma exceção
+     *
+     * @throws PagSeguroException
+     * @return void
+     */
+    protected function _settingsValidates()
+    {
+        parent::_settingsValidates();
 
-		return $this;
-	}
+        if (!isset($this->settings['currency']) || empty($this->settings['currency']))
+        {
+            throw new PagSeguroException("Erro de configuração - Atributo 'currency' não definido.");
+        }
 
-	/**
-	 * Envia dados ao PagSeguro para iniciar transação de pagamento.
-	 * Caso haja falha, retorna false e guarda a mensagem de
-	 * erro no atributo $lastError.
-	 *
-	 * @return mixed Um array com os dados da compra + endereço
-	 * para redirecionar o usuário, caso haja um. False em caso
-	 * de falha.
-	 */
-	public function finalize() {
-		try {
-			$response = $this->_sendData($this->_prepareData());
-			return $response;
-		}
-		catch (PagSeguroException $e) {
-			$this->lastError = $e->getMessage();
-			return false;
-		}
-	}
+        if ($this->settings['currency'] !== 'BRL')
+        {
+            throw new PagSeguroException("Erro de configuração - Atributo 'currency' só aceita o valor 'BRL'.");
+        }
+    }
 
-	/**
-	 * Valida os dados de configuração caso falhe dispara uma exceção
-	 *
-	 * @throws PagSeguroException
-	 * @return void
-	 */
-	protected function _settingsValidates() {
-		parent::_settingsValidates();
+    /**
+     * Recebe o XML convertido para Array com os dados de redirecionamento ou erros.
+     *
+     * @param array $data
+     * @return array
+     */
+    protected function _parseResponse($data)
+    {
+        if (!isset($data['checkout']))
+        {
+            throw new PagSeguroException("Resposta inválida do PagSeguro para Checkout.");
+        }
 
-		if (!isset($this->settings['currency']) || empty($this->settings['currency'])) {
-			throw new PagSeguroException("Erro de configuração - Atributo 'currency' não definido.");
-		}
+        $data['redirectTo'] = sprintf($this->redirectTo, $data['checkout']['code']);
 
-		if ($this->settings['currency'] !== 'BRL') {
-			throw new PagSeguroException("Erro de configuração - Atributo 'currency' só aceita o valor 'BRL'.");
-		}
-	}
+        return $data;
+    }
 
-	/**
-	 * Recebe o XML convertido para Array com os dados de redirecionamento ou erros.
-	 *
-	 * @param array $data
-	 * @return array
-	 */
-	protected function _parseResponse($data) {
-		if (!isset($data['checkout'])) {
-			throw new PagSeguroException("Resposta inválida do PagSeguro para Checkout.");
-		}
+    /**
+     * Prepara os dados para enviar ao PagSeguro
+     *
+     * @return array
+     */
+    protected function _prepareData()
+    {
+        if ($this->cartCount === 1)
+        {
+            throw new PagSeguroException("Seu carrinho está vazio, adicione algum item antes de finalizar.");
+        }
+        
+        $config = array();
+        //Definindo as configurações de autenticação.
+        if ($this->settings['type']=='seller')
+        {
+            $email = $this->settings['email'];
+            $token = $this->settings['token'];
+            $config = compact("email","token");
+        }else
+        if ($this->settings['type']=='application')
+        {
+            $appId = $this->settings['appId'];
+            $appKey = $this->settings['appKey'];
+            $config = compact("appId","appKey");
+        }
+        
 
-		$data['redirectTo'] = sprintf($this->redirectTo, $data['checkout']['code']);
+        return array_merge($this->reference, $config, $this->type, $this->cart, $this->shippingAddress, $this->shippingCustomer);
+    }
 
-		return $data;
-	}
-
-	/**
-	 * Prepara os dados para enviar ao PagSeguro
-	 *
-	 * @return array
-	 */
-	protected function _prepareData() {
-		if ($this->cartCount === 1) {
-			throw new PagSeguroException("Seu carrinho está vazio, adicione algum item antes de finalizar.");
-		}
-
-		return array_merge($this->reference, $this->settings, $this->type, $this->cart, $this->shippingAddress, $this->shippingCustomer);
-	}
 }

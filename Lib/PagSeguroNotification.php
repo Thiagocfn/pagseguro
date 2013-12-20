@@ -57,7 +57,7 @@ class PagSeguroNotification extends PagSeguroConsult {
 			return false;
 		}
 
-		if (!isset($data['notificationType']) || $data['notificationType'] != 'transaction') {
+		if (!isset($data['notificationType']) || $data['notificationType'] != 'transaction' || $data['notificationType'] != 'applicationAuthorization') {
 			return false;
 		}
 

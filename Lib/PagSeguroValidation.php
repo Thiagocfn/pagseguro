@@ -1,4 +1,5 @@
 <?php
+
 App::uses('Validation', 'Utility');
 
 /**
@@ -12,6 +13,7 @@ App::uses('Validation', 'Utility');
  *
  * @author	 	 Felipe Theodoro Gonçalves
  * @author       Cauan Cabral
+ * @author Thiago Souza <thiagocfn@msn.com>
  * @link         https://github.com/radig/pagseguro/
  * @license      MIT License (http://www.opensource.org/licenses/mit-license.php)
  */
@@ -24,93 +26,135 @@ App::uses('Validation', 'Utility');
 class PagSeguroValidation
 {
 
-	public static $lastError = null;
+    public static $lastError = null;
 
-/**
- * Checa o nome do remetente de acordo com
- * as regras do PagSeguro
- *
- * @param string $check The value to check.
- * @return boolean
- */
-	public static function name($check)
-	{
-		if(!self::genericValidate($check, 50)) {
-			return false;
-		}
+    /**
+     * Checa o nome do remetente de acordo com
+     * as regras do PagSeguro
+     *
+     * @param string $check The value to check.
+     * @return boolean
+     */
+    public static function name($check)
+    {
+        if (!self::genericValidate($check, 50))
+        {
+            return false;
+        }
 
-		$parts = explode(' ', $check);
+        $parts = explode(' ', $check);
 
-		if (count($parts) < 2) {
-			return false;
-		}
+        if (count($parts) < 2)
+        {
+            return false;
+        }
 
-		foreach ($parts as $part) {
-			if (!Validation::alphaNumeric($part)) {
-				return false;
-			}
-		}
+        foreach ($parts as $part)
+        {
+            if (!Validation::alphaNumeric($part))
+            {
+                return false;
+            }
+        }
 
-		return self::success();
-	}
+        return self::success();
+    }
 
-/**
- * Checa se o email corresponde ao formato esperado
- * pela API do PagSeguro.
- *
- * @param  string $check Email
- * @return boolean
- */
-	public static function email($check)
-	{
-		return self::genericValidate($check, 60);
-	}
+    /**
+     * Checa se o email corresponde ao formato esperado
+     * pela API do PagSeguro.
+     *
+     * @param  string $check Email
+     * @return boolean
+     */
+    public static function email($check)
+    {
+        return self::genericValidate($check, 60);
+    }
 
-/**
- * Checa se o token corresponde ao formato esperado
- * pela API do PagSeguro.
- *
- * @param  string $check Token
- * @return boolean
- */
-	public static function token($check)
-	{
-		return self::genericValidate($check, 32);
-	}
+    /**
+     * Checa se o token corresponde ao formato esperado
+     * pela API do PagSeguro.
+     *
+     * @param  string $check Token
+     * @return boolean
+     */
+    public static function token($check)
+    {
+        return self::genericValidate($check, 32);
+    }
 
-/**
- * Método genérico para validação que verifica se o campo
- * não está vazio e se respeita um determinado limite de
- * tamanho.
- *
- * @param  string $value   Valor do campo que será checado
- * @param  int    $maxSize Tamanho máximo permitido para o campo
- * @return boolean
- */
-	protected static function genericValidate($value, $maxSize)
-	{
-		if (empty($value)) {
-			self::$lastError = __("Atributo ':attr:' está vazio.");
-			return false;
-		}
+    /**
+     * Checa se o id da Aplicação corresponde ao formato esperado
+     * pela API do PagSeguro.
+     *
+     * @param  string $check Email
+     * @return boolean
+     */
+    public static function appId($check)
+    {
+        return self::genericValidate($check, 60);
+    }
 
-		if (strlen($value) > $maxSize) {
-			self::$lastError = __("Atributo ':attr:' possuí tamanho maior que o permitido ({$maxSize}).");
-			return false;
-		}
+    /**
+     * Checa se o token corresponde ao formato esperado
+     * pela API do PagSeguro.
+     *
+     * @param  string $check Token
+     * @return boolean
+     */
+    public static function appKey($check)
+    {
+        return self::genericValidate($check, 32);
+    }
+    
+    /**
+     * Verifica se o tipo de aplicação está correto.
+     * @param type $check
+     * @return type
+     */
+    public static function type($check)
+    {
+        return ($check == "seller" || $check == "application");
+    }
+    
 
-		return self::success();
-	}
+    /**
+     * Método genérico para validação que verifica se o campo
+     * não está vazio e se respeita um determinado limite de
+     * tamanho.
+     *
+     * @param  string $value   Valor do campo que será checado
+     * @param  int    $maxSize Tamanho máximo permitido para o campo
+     * @return boolean
+     */
+    protected static function genericValidate($value, $maxSize)
+    {
+        if (empty($value))
+        {
+            self::$lastError = __("Atributo ':attr:' está vazio.");
+            return false;
+        }
 
-/**
- * Método auxiliar para limpar o histórico de erros e retornar
- * true, usado quando uma validação é bem sucedida.
- *
- * @return boolean
- */
-	protected static function success()
-	{
-		self::$lastError = null;
-		return true;
-	}
+        if (strlen($value) > $maxSize)
+        {
+            self::$lastError = __("Atributo ':attr:' possuí tamanho maior que o permitido ({$maxSize}).");
+            return false;
+        }
+
+        return self::success();
+    }
+
+    /**
+     * Método auxiliar para limpar o histórico de erros e retornar
+     * true, usado quando uma validação é bem sucedida.
+     *
+     * @return boolean
+     */
+    protected static function success()
+    {
+        self::$lastError = null;
+        return true;
+    }
+
 }
