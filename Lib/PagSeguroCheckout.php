@@ -27,6 +27,15 @@ class PagSeguroCheckout extends PagSeguro
      * @var String
      */
     private $redirectTo = 'https://pagseguro.uol.com.br/v2/checkout/payment.html?code=%s';
+    
+    /**
+     * Sua URL que o PagSeguro deve retornar após ao final do
+     *  fluxo de autorização no ambiente do PagSeguro.
+     * 
+     * Será enviado sob a tag: redirectURL
+     * @var string URL bem formada eg.:http://www.seusite.com.br/retorno.php
+     */
+    protected $returnTo = null;
 
     /**
      * Referência da transação
@@ -37,6 +46,14 @@ class PagSeguroCheckout extends PagSeguro
      * @var array
      */
     private $reference = array();
+    
+    /**
+     * Código de autorização do vendedor.
+     * Necessário quando a integração é via Aplicação.
+     * Esse código determina em nome de quem está realizando o Check-out.
+     * @var string Texto com 32 caracteres enviado pelo PagSeguro.
+     */
+    private $authorizationCode = null;
 
     /**
      * Dados do endereço
@@ -273,6 +290,43 @@ class PagSeguroCheckout extends PagSeguro
 
         return $this;
     }
+    
+    /**
+     * Código de autorização do vendedor.
+     * Necessário quando a integração é via Aplicação.
+     * Esse código determina em nome de quem está realizando o Check-out.
+     * @param string $code Texto com 32 caracteres enviado pelo PagSeguro.
+     */
+    public function setAuthorizationCode($code)
+    {
+        $this->authorizationCode = $code;
+    }
+    
+    /**
+     * Sua URL que o PagSeguro deve retornar após ao final do
+     *  fluxo de autorização no ambiente do PagSeguro.
+     * 
+     * Será enviado sob a tag: redirectURL
+     * @return string URL bem formada eg.:http://www.seusite.com.br/retorno.php
+     */
+    public function getReturnTo()
+    {
+        return $this->returnTo;
+    }
+
+    /**
+     * Sua URL que o PagSeguro deve retornar após ao final do
+     *  fluxo de autorização no ambiente do PagSeguro.
+     * 
+     * Será enviado sob a tag: redirectURL
+     * @param string URL bem formada eg.:http://www.seusite.com.br/retorno.php
+     */
+    
+    public function setReturnTo($returnTo)
+    {
+        $this->returnTo = $returnTo;
+        return $this;
+    }
 
     /**
      * Envia dados ao PagSeguro para iniciar transação de pagamento.
@@ -349,20 +403,27 @@ class PagSeguroCheckout extends PagSeguro
         
         $config = array();
         //Definindo as configurações de autenticação.
+        $this->settings['type']='seller';
         if ($this->settings['type']=='seller')
         {
             $email = $this->settings['email'];
             $token = $this->settings['token'];
             $config = compact("email","token");
-        }else
-        if ($this->settings['type']=='application')
+        }elseif ($this->settings['type']=='application')
         {
             $appId = $this->settings['appId'];
             $appKey = $this->settings['appKey'];
-            $config = compact("appId","appKey");
+            $authorizationCode = $this->authorizationCode;
+            $config = compact("appId","appKey", "authorizationCode");
         }
         
-
+        $config["currency"] = $this->settings['currency'];
+        if (isset($this->returnTo))
+        {
+            $config["redirectURL"] = $this->returnTo;
+        }
+        print_r(array_merge($this->reference, $config, $this->type, $this->cart, $this->shippingAddress, $this->shippingCustomer));
+        
         return array_merge($this->reference, $config, $this->type, $this->cart, $this->shippingAddress, $this->shippingCustomer);
     }
 

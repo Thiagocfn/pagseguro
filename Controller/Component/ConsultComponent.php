@@ -81,6 +81,20 @@ class ConsultComponent extends Component {
 			return false;
 		}
 	}
+        /**
+	 * Recupera informações de uma authorização
+	 *
+	 * @param string $authCode
+	 * @return mixed Array com resposta em caso de sucesso e null em caso de falha
+	*/
+	public function getAuthInfo($authCode) {
+		try{
+			return $this->_PagSeguroConsult->read($authCode,PagSeguroConsult::AUTH);
+		}
+		catch(PagSeguroException $e) {
+			return false;
+		}
+	}
 
 	/**
 	 * Faz consulta a API do PagSeguro sobre a situação dos paramentos realizados

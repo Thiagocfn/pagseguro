@@ -19,11 +19,11 @@ App::uses('PagSeguroException', 'PagSeguro.Lib');
  */
 class PagSeguroConsult extends PagSeguro
 {
+
     const TRANSACTION = "transaction";
     const AUTH = "authorization";
-    
     const TRANSACTION_PATH = "/v2/transactions/";
-    const AUTH_PATH = "/v2/transactions/";
+    const AUTH_PATH = "/v2/authorizations/notifications/";
 
     static public $TYPE_READ = 'read';
     static public $TYPE_SEARCH = 'search';
@@ -37,12 +37,10 @@ class PagSeguroConsult extends PagSeguro
      */
     public function __construct($settings = array())
     {
-        $this->settings['type'] = self::$TYPE_READ;
+        $this->type = self::$TYPE_READ;
         $this->settings['onlyBasic'] = false;
 
         parent::__construct($settings);
-
-        $this->URI['path'] = PagSeguroConsult::TRANSACTION_PATH;
     }
 
     /**
@@ -56,19 +54,22 @@ class PagSeguroConsult extends PagSeguro
      */
     public function read($code, $type = PagSeguroConsult::TRANSACTION)
     {
-        
+
 
         try
         {
-            if ($type == PagSeguroConsult::AUTH)
+            if ($type == PagSeguroConsult::TRANSACTION)
             {
-                
+                $this->URI['path'] = PagSeguroConsult::TRANSACTION_PATH;
+            } else
+            {
+                $this->URI['path'] = PagSeguroConsult::AUTH_PATH;
             }
-            
-            $keep = $this->URI['path'];
+
+
             $this->URI['path'] .= $code;
-            $retorno =  $this->_sendData($this->_prepareData(), 'GET');
-            $this->URI['path'] = $keep;
+            $retorno = $this->_sendData($this->_prepareData(), 'GET');
+            $this->URI['path'] = "";
             return $retorno;
         } catch (PagSeguroException $e)
         {
@@ -90,7 +91,7 @@ class PagSeguroConsult extends PagSeguro
      */
     public function find($begin, $end, $limit = 50, $page = 1)
     {
-        if ($this->settings['type'] === self::$TYPE_ABANDONED)
+        if ($this->type === self::$TYPE_ABANDONED)
         {
             $this->URI['path'] .= 'abandoned/';
         }
@@ -142,9 +143,16 @@ class PagSeguroConsult extends PagSeguro
         {
             $appId = $this->settings['appId'];
             $appKey = $this->settings['appKey'];
-            $config = compact("appId", "appKey");
+            if (isset($this->authorizationCode))
+            {
+                $authorizationCode = $this->authorizationCode;
+                $config = compact("appId", "appKey", "authorizationCode");
+            } else
+            {
+                $config = compact("appId", "appKey");
+            }
         }
-        return array_merge($config,$this->others);
+        return array_merge($config, $this->others);
     }
 
     /**
@@ -191,21 +199,26 @@ class PagSeguroConsult extends PagSeguro
 
             return $this->_parseOneResponseEntry($data['transaction']);
         }
-
-        $decoded = array(
-            'pages' => $data['transactionSearchResult']['totalPages'],
-            'pageSize', $data['transactionSearchResult']['resultsInThisPage'],
-            'current' => $data['transactionSearchResult']['currentPage'],
-        );
-
-        $decoded['items'] = array();
-
-        foreach ($data['transactionSearchResult']['transactions'] as $transaction)
+        else if (isset ($data['transactionSearchResult']))
         {
-            $decoded['items'][] = $this->_parseOneResponseEntry($transaction);
-        }
 
-        return $decoded;
+            $decoded = array(
+                'pages' => $data['transactionSearchResult']['totalPages'],
+                'pageSize', $data['transactionSearchResult']['resultsInThisPage'],
+                'current' => $data['transactionSearchResult']['currentPage'],
+            );
+
+            $decoded['items'] = array();
+
+            foreach ($data['transactionSearchResult']['transactions'] as $transaction)
+            {
+                $decoded['items'][] = $this->_parseOneResponseEntry($transaction);
+            }
+
+            return $decoded;
+        }
+        else 
+            return $data['authorization'];
     }
 
     /**

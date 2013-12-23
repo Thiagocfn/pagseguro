@@ -167,6 +167,8 @@ class PagSeguro
                 );
             } elseif ('post' === strtolower($method))
             {
+                //print_r($this->URI);
+                //print_r($data);
                 $return = $HttpSocket->post(
                         $this->URI, $data, array('header' => array('Content-Type' => "application/x-www-form-urlencoded; charset={$this->charset}"))
                 );
@@ -241,7 +243,7 @@ class PagSeguro
      */
     protected function _settingsValidates()
     {
-
+        
         if (!isset($this->settings['type']))
         {
             $this->settings['type'] = 'seller';
